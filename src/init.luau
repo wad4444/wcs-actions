@@ -15,9 +15,12 @@ export type ClientEventLike<T...> = types.ClientEventLike<T...>
 export type ServerSystemProps = types.ServerSystemProps
 export type ClientSystemProps = types.ClientSystemProps
 
-return {
+local returns = {
 	components = components,
 	create_action_registry = create_action_registry,
 	server_system = server_system,
 	client_system = client_system,
 }
+returns.default = returns
+
+return table.freeze(returns)

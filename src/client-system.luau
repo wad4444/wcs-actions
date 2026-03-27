@@ -16,7 +16,7 @@ local function is_valid_request(
 		return false
 	end
 
-	local action_table = registry.get_config(action_marker )
+	local action_table = registry.get_config(action_marker)
 	if action_table.action_type ~= "client" and action_table.action_type ~= "shared" then
 		return false
 	end
@@ -60,7 +60,7 @@ local function client_system(props: types.ClientSystemProps)
 		local local_player = Players.LocalPlayer
 
 		for _, entity, data in use_requests do
-			local client_entity = replicator:get_client_entity(entity )
+			local client_entity = replicator:get_client_entity(entity)
 			if not client_entity then
 				continue
 			end
@@ -96,7 +96,7 @@ local function client_system(props: types.ClientSystemProps)
 			local action_marker = world:target(entity, ct.action)
 			assert(action_marker, "Action marker not found")
 
-			local action_table = registry.get_config(action_marker )
+			local action_table = registry.get_config(action_marker)
 			if action_table.action_type == "server" then
 				continue
 			end
@@ -118,7 +118,7 @@ local function client_system(props: types.ClientSystemProps)
 			local action_marker = world:target(entity, ct.action)
 			assert(action_marker, "Action marker not found")
 
-			local action_table = registry.get_config(action_marker )
+			local action_table = registry.get_config(action_marker)
 			local check_state = action_table.action_type == "client"
 				or action_table.action_type == "predicted"
 				or action_table.check_local_state
@@ -133,7 +133,7 @@ local function client_system(props: types.ClientSystemProps)
 				local server_entity = replicator:get_server_entity(entity)
 				assert(server_entity, "Server entity not found")
 
-				remotes.use_request:FireServer(server_entity , data)
+				remotes.use_request:FireServer(server_entity, data)
 				if action_table.action_type == "server" then
 					continue
 				end
@@ -149,7 +149,7 @@ local function client_system(props: types.ClientSystemProps)
 			local action_marker = world:target(entity, ct.action)
 			assert(action_marker, "Action marker not found")
 
-			local action_table = registry.get_config(action_marker )
+			local action_table = registry.get_config(action_marker)
 			if action_table.action_type ~= "server" then
 				continue
 			end
@@ -161,14 +161,14 @@ local function client_system(props: types.ClientSystemProps)
 				continue
 			end
 
-			remotes.start_continuous:FireServer(server_entity , data)
+			remotes.start_continuous:FireServer(server_entity, data)
 		end
 
 		for entity in stopped_continuous_query do
 			local action_marker = world:target(entity, ct.action)
 			assert(action_marker, "Action marker not found")
 
-			local action_table = registry.get_config(action_marker )
+			local action_table = registry.get_config(action_marker)
 			if action_table.action_type ~= "server" then
 				continue
 			end
@@ -180,7 +180,7 @@ local function client_system(props: types.ClientSystemProps)
 				continue
 			end
 
-			remotes.stop_continuous:FireServer(server_entity )
+			remotes.stop_continuous:FireServer(server_entity)
 		end
 	end
 end

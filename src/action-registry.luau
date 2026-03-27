@@ -13,9 +13,9 @@ local DEFAULT_CONFIG: types.ActionTable<any> = {
 }
 
 local function create_action_registry<T>(custom_defaults: types.PartialTableConfig<T>?): types.ActionRegistry<T>
-	local defaults = table.clone(DEFAULT_CONFIG) 
+	local defaults = table.clone(DEFAULT_CONFIG)
 	if custom_defaults then
-		for key, value in custom_defaults  do
+		for key, value in custom_defaults do
 			defaults[key] = value
 		end
 	end
@@ -31,8 +31,8 @@ local function create_action_registry<T>(custom_defaults: types.PartialTableConf
 		jecs.meta(id, jecs.Name, name)
 		jecs.meta(id, replecs.Shared)
 
-		local merged = table.clone(defaults) 
-		for key, value in config  do
+		local merged = table.clone(defaults)
+		for key, value in config do
 			merged[key] = value
 		end
 
@@ -51,17 +51,17 @@ local function create_action_registry<T>(custom_defaults: types.PartialTableConf
 		name: K & keyof<types.EnvironmentSpecific<T>>,
 		value: index<types.EnvironmentSpecific<T>, K>
 	)
-		local config = registry[id] 
+		local config = registry[id]
 		assert(config ~= nil, "Action config not found")
 
 		config[name] = value
 	end
 
-	return {
+	return table.freeze({
 		marker = marker,
 		get_config = get_config,
 		set = set,
-	}
+	})
 end
 
 return create_action_registry

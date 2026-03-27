@@ -44,8 +44,8 @@ export interface ClientEventLike<T extends unknown[]> {
 export interface ServerSystemProps {
 	world: World;
 	replicator: Replecs.Server;
-	registry: ActionRegistry<unknown>;
-	cleanup: (...args: unknown[]) => void;
+	registry: ActionRegistry<any>;
+	cleanup: (...args: any[]) => any;
 	remotes: {
 		use_request: ServerEventLike<[entity: Entity, data?: defined[]]>;
 		start_continuous: ServerEventLike<[entity: Entity, data?: defined[]]>;
@@ -56,8 +56,8 @@ export interface ServerSystemProps {
 export interface ClientSystemProps {
 	world: World;
 	replicator: Replecs.Client;
-	registry: ActionRegistry<unknown>;
-	cleanup: (...args: unknown[]) => void;
+	registry: ActionRegistry<any>;
+	cleanup: (...args: any[]) => void;
 	remotes: {
 		use_request: ClientEventLike<[entity: number, data?: defined[]]>;
 		start_continuous: ClientEventLike<[entity: number, data?: defined[]]>;
@@ -81,4 +81,4 @@ declare const WCSActions: {
 	client_system: (props: ClientSystemProps) => () => void;
 };
 
-export = WCSActions;
+export default WCSActions;
