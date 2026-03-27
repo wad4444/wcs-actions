@@ -1,0 +1,19 @@
+{
+	"name": "wcs-actions-test",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"$className": "ReplicatedStorage",
+			"Packages": {
+				"$path": "Packages",
+				"wcs-actions": {
+					"$path": "src"
+				}
+			}
+		},
+		"ServerScriptService": {
+			"$className": "ServerScriptService",
+			"$path": "testing"
+		}
+	}
+}

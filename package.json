@@ -1,0 +1,34 @@
+{
+	"name": "@rbxts/wcs-actions",
+	"version": "0.0.1",
+	"main": "src/init.luau",
+	"types": "src/index.d.ts",
+	"type": "commonjs",
+	"license": "MIT",
+	"files": [
+		"src",
+		"default.project.json",
+		"!**/*.tsbuildinfo"
+	],
+	"publishConfig": {
+		"access": "public"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/wad4444/wcs-actions.git"
+	},
+	"bugs": {
+		"url": "https://github.com/wad4444/wcs-actions/issues"
+	},
+	"homepage": "https://github.com/wad4444/wcs-actions#readme",
+	"peerDependencies": {
+		"@rbxts/jecs": "*",
+		"@rbxts/jecs-utils": "*",
+		"@rbxts/replecs": "*"
+	},
+	"devDependencies": {
+		"@rbxts/compiler-types": "^3.0.0-types.0",
+		"@rbxts/types": "^1.0.911",
+		"typescript": "^5.5.3"
+	}
+}

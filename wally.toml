@@ -1,0 +1,13 @@
+[package]
+name = "wad4444/wcs-actions"
+version = "0.0.1"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+license = "MIT"
+exclude = ["**", "*.d.ts"]
+include = ["default.project.json", "src", "LICENSE"]
+
+[dependencies]
+jecs = "ukendio/jecs@0.11.0"
+jecs-utils = "pepeeltoro41/jecs-utils@1.4.1"
+replecs = "pepeeltoro41/replecs@0.3.1"
