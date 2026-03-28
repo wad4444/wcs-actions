@@ -25,7 +25,7 @@ local function is_valid_request(
 		return false
 	end
 
-	local action_table = registry.get_config(action_marker)
+	local action_table = registry.get_config(action_marker :: any)
 	if action_table.action_type ~= "server" and action_table.action_type ~= "predicted" then
 		return false
 	end
@@ -33,8 +33,9 @@ local function is_valid_request(
 	return world:get(entity, ct.action_player) == player
 end
 
-local function server_system(props: types.ServerSystemProps)
+local function server_system<T>(props: types.ServerSystemProps<T>)
 	local world = props.world
+	local state = props.state
 	local registry = props.registry
 	local remotes = props.remotes
 	local cleanup = props.cleanup
@@ -132,7 +133,7 @@ local function server_system(props: types.ServerSystemProps)
 
 			local handler = action_table.handler
 			if handler then
-				handler(world, entity, data)
+				handler(state, entity, data)
 			end
 		end
 

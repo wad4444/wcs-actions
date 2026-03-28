@@ -16,7 +16,7 @@ local function is_valid_request(
 		return false
 	end
 
-	local action_table = registry.get_config(action_marker)
+	local action_table = registry.get_config(action_marker :: any)
 	if action_table.action_type ~= "client" and action_table.action_type ~= "shared" then
 		return false
 	end
@@ -24,8 +24,9 @@ local function is_valid_request(
 	return world:get(entity, ct.action_player) == local_player
 end
 
-local function client_system(props: types.ClientSystemProps)
+local function client_system<T>(props: types.ClientSystemProps<T>)
 	local world = props.world
+	local state = props.state
 	local replicator = props.replicator
 	local registry = props.registry
 	local remotes = props.remotes
@@ -141,7 +142,7 @@ local function client_system(props: types.ClientSystemProps)
 
 			local handler = action_table.handler
 			if handler then
-				handler(world, entity, data)
+				handler(state, entity, data)
 			end
 		end
 

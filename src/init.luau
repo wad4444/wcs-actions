@@ -12,8 +12,8 @@ export type ActionTable<T> = types.ActionTable<T>
 export type ActionRegistry<T> = types.ActionRegistry<T>
 export type ServerEventLike<T...> = types.ServerEventLike<T...>
 export type ClientEventLike<T...> = types.ClientEventLike<T...>
-export type ServerSystemProps = types.ServerSystemProps
-export type ClientSystemProps = types.ClientSystemProps
+export type ServerSystemProps<T> = types.ServerSystemProps<T>
+export type ClientSystemProps<T> = types.ClientSystemProps<T>
 
 local returns = {
 	components = components,

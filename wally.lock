@@ -23,6 +23,6 @@ version = "0.11.0"
 dependencies = []
 
 [[package]]
-name = "wad/wcs-actions"
-version = "0.1.0"
+name = "wad4444/wcs-actions"
+version = "0.0.1"
 dependencies = [["jecs", "ukendio/jecs@0.11.0"], ["jecs-utils", "pepeeltoro41/jecs-utils@1.4.1"], ["replecs", "pepeeltoro41/replecs@0.3.1"]]

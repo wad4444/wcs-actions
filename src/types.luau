@@ -1,21 +1,21 @@
 export type Entity<T = unknown> = typeof((function()
 	local jecs = require(script.Parent.Parent.jecs)
-	return (nil) :: jecs.Entity<T>
+	return (nil :: any) :: jecs.Entity<T>
 end)())
 
 export type World = typeof((function()
 	local jecs = require(script.Parent.Parent.jecs)
-	return (nil) :: jecs.World
+	return (nil :: any) :: jecs.World
 end)())
 
 export type ReplecsServer = typeof((function()
 	local replecs = require(script.Parent.Parent.replecs)
-	return (nil) :: replecs.Server
+	return (nil :: any) :: replecs.Server
 end)())
 
 export type ReplecsClient = typeof((function()
 	local replecs = require(script.Parent.Parent.replecs)
-	return (nil) :: replecs.Client
+	return (nil :: any) :: replecs.Client
 end)())
 
 export type Collect = <T...>(event: RBXScriptSignal<T...>) -> (() -> (number, T...), () -> ())
@@ -90,10 +90,11 @@ export type ClientEventLike<T...> = {
 	FireServer: (self: ClientEventLike<T...>, T...) -> (),
 }
 
-export type ServerSystemProps = {
+export type ServerSystemProps<T> = {
 	world: World,
 	replicator: ReplecsServer,
-	registry: AnyActionRegistry,
+	state: T,
+	registry: ActionRegistry<T>,
 	cleanup: (...any) -> (),
 	remotes: {
 		use_request: ServerEventLike<Entity, { any }?>,
@@ -102,10 +103,11 @@ export type ServerSystemProps = {
 	},
 }
 
-export type ClientSystemProps = {
+export type ClientSystemProps<T> = {
 	world: World,
 	replicator: ReplecsClient,
-	registry: AnyActionRegistry,
+	state: T,
+	registry: ActionRegistry<T>,
 	cleanup: (...any) -> (),
 	remotes: {
 		use_request: ClientEventLike<number, { any }?>,
