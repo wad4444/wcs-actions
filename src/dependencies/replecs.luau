@@ -1,8 +1,9 @@
 --!nonstrict
 local package_module = script.Parent.Parent
+local TS = _G[package_module]
 
-if package_module.Parent:FindFirstChild("replecs") and package_module.Parent.replecs:IsA("ModuleScript") then
-	return require(package_module.Parent.replecs)
+if TS then
+	return TS.import(script, TS.getModule(script, "@rbxts", "replecs").out)
 else
-	return require(package_module.Parent.replecs.out.replecs)
+	return require(package_module.Parent.replecs)
 end
