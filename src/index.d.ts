@@ -41,10 +41,11 @@ export interface ClientEventLike<T extends unknown[]> {
 	FireServer(this: ClientEventLike<T>, ...args: T): void;
 }
 
-export interface ServerSystemProps {
+export interface ServerSystemProps<T> {
 	world: World;
 	replicator: Replecs.Server;
-	registry: ActionRegistry<any>;
+	state: T;
+	registry: ActionRegistry<T>;
 	cleanup: (...args: any[]) => any;
 	remotes: {
 		use_request: ServerEventLike<[entity: Entity, data?: defined[]]>;
@@ -53,10 +54,11 @@ export interface ServerSystemProps {
 	};
 }
 
-export interface ClientSystemProps {
+export interface ClientSystemProps<T> {
 	world: World;
 	replicator: Replecs.Client;
-	registry: ActionRegistry<any>;
+	state: T;
+	registry: ActionRegistry<T>;
 	cleanup: (...args: any[]) => void;
 	remotes: {
 		use_request: ClientEventLike<[entity: number, data?: defined[]]>;
@@ -77,8 +79,8 @@ export interface Components {
 declare const WCSActions: {
 	components: Components;
 	create_action_registry: <T>(custom_defaults?: Partial<TableConfig<T>>) => ActionRegistry<T>;
-	server_system: (props: ServerSystemProps) => () => void;
-	client_system: (props: ClientSystemProps) => () => void;
+	server_system: <T>(props: ServerSystemProps<T>) => () => void;
+	client_system: <T>(props: ClientSystemProps<T>) => () => void;
 };
 
 export default WCSActions;

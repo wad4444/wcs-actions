@@ -105,7 +105,7 @@ local function client_system<T>(props: types.ClientSystemProps<T>)
 				continue
 			end
 
-			local is_unavailable = world:has(entity, ct.unavailable) or action_table.can_start(world, entity) == false
+			local is_unavailable = world:has(entity, ct.unavailable) or action_table.can_start(state, entity) == false
 			if action_table.action_type == "client" and is_unavailable then
 				continue
 			end
@@ -124,7 +124,7 @@ local function client_system<T>(props: types.ClientSystemProps<T>)
 				or action_table.action_type == "predicted"
 				or action_table.check_local_state
 
-			local is_unavailable = world:has(entity, ct.unavailable) or action_table.can_start(world, entity) == false
+			local is_unavailable = world:has(entity, ct.unavailable) or action_table.can_start(state, entity) == false
 
 			if check_state and is_unavailable then
 				continue

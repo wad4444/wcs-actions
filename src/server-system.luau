@@ -96,7 +96,7 @@ local function server_system<T>(props: types.ServerSystemProps<T>)
 				continue
 			end
 
-			local is_unavailable = world:has(entity, ct.unavailable) or action_table.can_start(world, entity) == false
+			local is_unavailable = world:has(entity, ct.unavailable) or action_table.can_start(state, entity) == false
 			if is_unavailable then
 				continue
 			end
@@ -113,7 +113,7 @@ local function server_system<T>(props: types.ServerSystemProps<T>)
 			local action_table = registry.get_config(action_marker)
 			local check_state = action_table.action_type ~= "client" or action_table.check_local_state
 
-			local is_unavailable = world:has(entity, ct.unavailable) or action_table.can_start(world, entity) == false
+			local is_unavailable = world:has(entity, ct.unavailable) or action_table.can_start(state, entity) == false
 
 			if check_state and is_unavailable then
 				continue

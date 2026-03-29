@@ -1,4 +1,4 @@
-local jecs = require(script.Parent.Parent.jecs)
+local jecs = require("./dependencies/jecs")
 
 local action = jecs.tag()
 jecs.meta(action, jecs.Exclusive)

@@ -1,5 +1,5 @@
-local jecs = require(script.Parent.Parent.jecs)
-local replecs = require(script.Parent.Parent.replecs)
+local jecs = require("./dependencies/jecs")
+local replecs = require("./dependencies/replecs")
 local types = require("./types")
 
 local function always_true()
