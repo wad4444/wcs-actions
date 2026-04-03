@@ -4,6 +4,7 @@ local jecs = require("./dependencies/jecs")
 local types = require("./types")
 local collect = require("./dependencies/jecs-utils").collect :: types.Collect
 local ct = require("./components")
+local constants = require("./constants")
 
 local function is_valid_request(
 	world: types.World,
@@ -249,7 +250,11 @@ local function client_system<T>(props: types.ClientSystemProps<T>)
 			world:add(session, jecs.pair(jecs.ChildOf, entity))
 			sessions[entity] = session
 
-			handler(state, entity, session, data)
+			local result = handler(state, entity, session, data)
+			if result ~= constants.HANDLER_SUCCESS then
+				world:delete(session)
+				sessions[entity] = nil
+			end
 		end
 
 		for entity, data in new_continuous_query do

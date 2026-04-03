@@ -2,6 +2,7 @@ local jecs = require("./dependencies/jecs")
 local replecs = require("./dependencies/replecs")
 local collect = require("./dependencies/jecs-utils").collect :: types.Collect
 local ct = require("./components")
+local constants = require("./constants")
 local types = require("./types")
 
 local function is_valid_entity(world: types.World, entity: any): boolean
@@ -207,13 +208,21 @@ local function server_system<T>(props: types.ServerSystemProps<T>)
 			world:add(session, jecs.pair(jecs.ChildOf, entity))
 			sessions[entity] = session
 
-			if should_replicate_session(action_table) then
+			local replicate = should_replicate_session(action_table)
+			if replicate then
 				world:add(session, jecs.pair(replecs.Relation, jecs.ChildOf))
 				world:set(session, replecs.Networked, world:get(entity, ct.action_player))
 				replicator:set_custom(session, ct.session_custom_id)
 			end
 
-			handler(state, entity, session, data)
+			local result = handler(state, entity, session, data)
+			if result ~= constants.HANDLER_SUCCESS then
+				if replicate then
+					replicator:stop_networked(session, true)
+				end
+				world:delete(session)
+				sessions[entity] = nil
+			end
 		end
 
 		for entity, data in new_continuous_query do

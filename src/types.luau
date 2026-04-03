@@ -22,7 +22,7 @@ export type Collect = <T...>(event: RBXScriptSignal<T...>) -> (() -> (number, T.
 
 export type ActionType = "server" | "predicted" | "client" | "shared"
 
-export type ActionHandler<T> = (state: T, action: Entity, session: Entity, data: { any }?) -> ()
+export type ActionHandler<T> = (state: T, action: Entity, session: Entity, data: { any }?) -> any
 export type ActionTickHandler<T> = (state: T, action: Entity, session: Entity) -> ()
 export type ActionEndHandler<T> = (state: T, action: Entity, session: Entity) -> ()
 export type ActionMispredictedHandler<T> = (state: T, action: Entity, session: Entity) -> ()

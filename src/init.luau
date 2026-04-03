@@ -1,5 +1,6 @@
 local types = require("@self/types")
 local components = require("@self/components")
+local constants = require("@self/constants")
 local create_action_registry = require("@self/action-registry")
 local server_system = require("@self/server-system")
 local client_system = require("@self/client-system")
@@ -23,6 +24,7 @@ local returns = {
 	create_action_registry = create_action_registry,
 	server_system = server_system,
 	client_system = client_system,
+	HANDLER_SUCCESS = constants.HANDLER_SUCCESS,
 }
 returns.default = returns
 
