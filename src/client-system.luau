@@ -1,9 +1,9 @@
 local Players = game:GetService("Players")
 
 local jecs = require("./dependencies/jecs")
+local types = require("./types")
 local collect = require("./dependencies/jecs-utils").collect :: types.Collect
 local ct = require("./components")
-local types = require("./types")
 
 local function is_valid_request(
 	world: types.World,
@@ -35,6 +35,8 @@ local function client_system<T>(props: types.ClientSystemProps<T>)
 	local use_requests, cleanup_use_requests = collect(remotes.use_request.OnClientEvent)
 	local continuous_starts, cleanup_continuous_starts = collect(remotes.start_continuous.OnClientEvent)
 	local continuous_stops, cleanup_continuous_stops = collect(remotes.stop_continuous.OnClientEvent)
+	local reject_sessions, cleanup_reject_sessions = collect(remotes.reject_session.OnClientEvent)
+	local end_sessions, cleanup_end_sessions = collect(remotes.end_session.OnClientEvent)
 
 	local action_wildcard = jecs.pair(ct.action, jecs.Wildcard)
 	local processed_continuous = jecs.pair(ct.processed, ct.continuous_request)
@@ -46,6 +48,18 @@ local function client_system<T>(props: types.ClientSystemProps<T>)
 	local stopped_continuous_query =
 		world:query(action_wildcard):with(processed_continuous):without(ct.continuous_request):cached()
 
+	local sessions: { [any]: any } = {}
+
+	ct.session_custom_id:handle(function(ctx)
+		local client_action = ctx.target(jecs.ChildOf)
+		if not client_action then
+			return nil
+		end
+		return sessions[client_action]
+	end)
+
+	replicator:register_custom_id(ct.session_custom_id)
+
 	cleanup(function()
 		continuous_query:fini()
 		action_request_query:fini()
@@ -55,10 +69,58 @@ local function client_system<T>(props: types.ClientSystemProps<T>)
 		cleanup_use_requests()
 		cleanup_continuous_starts()
 		cleanup_continuous_stops()
+		cleanup_reject_sessions()
+		cleanup_end_sessions()
 	end)
 
 	return function()
 		local local_player = Players.LocalPlayer
+
+		for _, entity in reject_sessions do
+			local client_entity = replicator:get_client_entity(entity) :: types.Entity
+			if not client_entity then
+				continue
+			end
+
+			local session = sessions[client_entity]
+			if not session then
+				continue
+			end
+
+			local session_alive = world:contains(session)
+			local action_marker = world:target(client_entity, ct.action)
+			local action_table = if action_marker and session_alive then registry.get_config(action_marker :: any) else nil
+
+			if action_table and action_table.on_mispredicted then
+				action_table.on_mispredicted(state, client_entity, session)
+			end
+
+			if action_table and action_table.on_end then
+				action_table.on_end(state, client_entity, session)
+			end
+
+			if session_alive then world:delete(session) end
+			sessions[client_entity] = nil
+		end
+
+		for _, entity in end_sessions do
+			local client_entity = replicator:get_client_entity(entity) :: types.Entity
+			if not client_entity then continue end
+
+			local session = sessions[client_entity]
+			if not session then continue end
+
+			local session_alive = world:contains(session)
+			local action_marker = world:target(client_entity, ct.action)
+			local action_table = if action_marker and session_alive then registry.get_config(action_marker :: any) else nil
+
+			if action_table and action_table.on_end then
+				action_table.on_end(state, client_entity, session)
+			end
+
+			if session_alive then world:delete(session) end
+			sessions[client_entity] = nil
+		end
 
 		for _, entity, data in use_requests do
 			local client_entity = replicator:get_client_entity(entity)
@@ -113,6 +175,39 @@ local function client_system<T>(props: types.ClientSystemProps<T>)
 			world:set(entity, ct.action_request, data)
 		end
 
+		local to_end: { any } = {}
+		for action, session in sessions do
+			if not world:contains(action) or not world:contains(session) or not world:has(session, ct.session) then
+				table.insert(to_end, action)
+				table.insert(to_end, session)
+			end
+		end
+
+		for i = 1, #to_end, 2 do
+			local action = to_end[i]
+			local session = to_end[i + 1]
+			local session_alive = world:contains(session)
+			local action_marker = if world:contains(action) then world:target(action, ct.action) else nil
+			local action_table = if action_marker then registry.get_config(action_marker :: any) else nil
+
+			if action_table and session_alive and action_table.on_end then
+				action_table.on_end(state, action, session)
+			end
+
+			if session_alive then world:delete(session) end
+			sessions[action] = nil
+		end
+
+		for action, session in sessions do
+			local action_marker = world:target(action, ct.action)
+			assert(action_marker, "Action marker not found")
+
+			local action_table = registry.get_config(action_marker)
+			if action_table.on_tick then
+				action_table.on_tick(state, action, session)
+			end
+		end
+
 		for entity, data in action_request_query do
 			world:remove(entity, ct.action_request)
 
@@ -140,10 +235,21 @@ local function client_system<T>(props: types.ClientSystemProps<T>)
 				end
 			end
 
-			local handler = action_table.handler
-			if handler then
-				handler(state, entity, data)
+			if sessions[entity] then
+				continue
 			end
+
+			local handler = action_table.handler
+			if not handler then
+				continue
+			end
+
+			local session = world:entity()
+			world:add(session, ct.session)
+			world:add(session, jecs.pair(jecs.ChildOf, entity))
+			sessions[entity] = session
+
+			handler(state, entity, session, data)
 		end
 
 		for entity, data in new_continuous_query do

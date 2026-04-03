@@ -1,4 +1,5 @@
 local jecs = require("./dependencies/jecs")
+local replecs = require("./dependencies/replecs")
 local collect = require("./dependencies/jecs-utils").collect :: types.Collect
 local ct = require("./components")
 local types = require("./types")
@@ -33,10 +34,15 @@ local function is_valid_request(
 	return world:get(entity, ct.action_player) == player
 end
 
+local function should_replicate_session<T>(action_table: types.ActionTable<T>): boolean
+	return action_table.action_type == "predicted"
+end
+
 local function server_system<T>(props: types.ServerSystemProps<T>)
 	local world = props.world
 	local state = props.state
 	local registry = props.registry
+	local replicator = props.replicator
 	local remotes = props.remotes
 	local cleanup = props.cleanup
 
@@ -53,6 +59,10 @@ local function server_system<T>(props: types.ServerSystemProps<T>)
 		world:query(ct.continuous_request):with(action_wildcard):without(processed_continuous):cached()
 	local stopped_continuous_query =
 		world:query(action_wildcard):with(processed_continuous):without(ct.continuous_request):cached()
+
+	local sessions: { [any]: any } = {}
+
+	replicator:register_custom_id(ct.session_custom_id)
 
 	cleanup(function()
 		continuous_query:fini()
@@ -104,6 +114,52 @@ local function server_system<T>(props: types.ServerSystemProps<T>)
 			world:set(entity, ct.action_request, data)
 		end
 
+		local to_end: { any } = {}
+		for action, session in sessions do
+			if not world:contains(action) or not world:contains(session) or not world:has(session, ct.session) then
+				table.insert(to_end, action)
+				table.insert(to_end, session)
+			end
+		end
+
+		for i = 1, #to_end, 2 do
+			local action = to_end[i]
+			local session = to_end[i + 1]
+			local session_alive = world:contains(session)
+			local action_marker = if world:contains(action) then world:target(action, ct.action) else nil
+			local action_table = if action_marker then registry.get_config(action_marker :: any) else nil
+
+			local replicate = action_table and session_alive and should_replicate_session(action_table)
+			local end_player = if replicate then world:get(action, ct.action_player) else nil
+
+			if action_table and session_alive and action_table.on_end then
+				action_table.on_end(state, action, session)
+			end
+
+			if replicate then
+				replicator:stop_networked(session, true)
+			end
+
+			if end_player then
+				remotes.end_session:FireClient(end_player, action)
+			end
+
+			if session_alive then
+				world:delete(session)
+			end
+			sessions[action] = nil
+		end
+
+		for action, session in sessions do
+			local action_marker = world:target(action, ct.action)
+			assert(action_marker, "Action marker not found")
+
+			local action_table = registry.get_config(action_marker)
+			if action_table.on_tick then
+				action_table.on_tick(state, action, session)
+			end
+		end
+
 		for entity, data in action_request_query do
 			world:remove(entity, ct.action_request)
 
@@ -111,9 +167,19 @@ local function server_system<T>(props: types.ServerSystemProps<T>)
 			assert(action_marker, "Action marker not found")
 
 			local action_table = registry.get_config(action_marker)
-			local check_state = action_table.action_type ~= "client" or action_table.check_local_state
 
+			if sessions[entity] then
+				continue
+			end
+
+			local check_state = action_table.action_type ~= "client" or action_table.check_local_state
 			local is_unavailable = world:has(entity, ct.unavailable) or action_table.can_start(state, entity) == false
+			local should_reject = check_state and is_unavailable and action_table.action_type == "predicted"
+			local reject_player = if should_reject then world:get(entity, ct.action_player) else nil
+
+			if reject_player then
+				remotes.reject_session:FireClient(reject_player, entity)
+			end
 
 			if check_state and is_unavailable then
 				continue
@@ -132,9 +198,22 @@ local function server_system<T>(props: types.ServerSystemProps<T>)
 			end
 
 			local handler = action_table.handler
-			if handler then
-				handler(state, entity, data)
+			if not handler then
+				continue
 			end
+
+			local session = world:entity()
+			world:add(session, ct.session)
+			world:add(session, jecs.pair(jecs.ChildOf, entity))
+			sessions[entity] = session
+
+			if should_replicate_session(action_table) then
+				world:add(session, jecs.pair(replecs.Relation, jecs.ChildOf))
+				world:set(session, replecs.Networked, world:get(entity, ct.action_player))
+				replicator:set_custom(session, ct.session_custom_id)
+			end
+
+			handler(state, entity, session, data)
 		end
 
 		for entity, data in new_continuous_query do

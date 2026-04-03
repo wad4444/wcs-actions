@@ -3,20 +3,26 @@ import type Replecs from "@rbxts/replecs";
 
 export type ActionType = "server" | "predicted" | "client" | "shared";
 
-export type ActionHandler<T> = (state: T, entity: Entity, data?: defined[]) => void;
-export type ActionInitializer<T> = (state: T, entity: Entity) => void;
-export type ActionReplicator<T> = (state: T, entity: Entity, player: Player) => void;
+export type ActionHandler<T> = (state: T, action: Entity, session: Entity, data?: defined[]) => void;
+export type ActionTickHandler<T> = (state: T, action: Entity, session: Entity) => void;
+export type ActionEndHandler<T> = (state: T, action: Entity, session: Entity) => void;
+export type ActionMispredictedHandler<T> = (state: T, action: Entity, session: Entity) => void;
+export type ActionInitializer<T> = (state: T, action: Entity) => void;
+export type ActionReplicator<T> = (state: T, action: Entity, player: Player) => void;
 
 export interface TableConfig<T> {
 	action_type: ActionType;
 	check_local_state: boolean;
-	can_start: (state: T, entity: Entity) => boolean;
+	can_start: (state: T, action: Entity) => boolean;
 }
 
 export interface EnvironmentSpecific<T> {
 	handler?: ActionHandler<T>;
 	initialize?: ActionInitializer<T>;
 	replicate?: ActionReplicator<T>;
+	on_tick?: ActionTickHandler<T>;
+	on_end?: ActionEndHandler<T>;
+	on_mispredicted?: ActionMispredictedHandler<T>;
 }
 
 export type ActionTable<T> = TableConfig<T> & EnvironmentSpecific<T>;
@@ -51,6 +57,8 @@ export interface ServerSystemProps<T> {
 		use_request: ServerEventLike<[entity: Entity, data?: defined[]]>;
 		start_continuous: ServerEventLike<[entity: Entity, data?: defined[]]>;
 		stop_continuous: ServerEventLike<[entity: Entity]>;
+		reject_session: ServerEventLike<[entity: Entity]>;
+		end_session: ServerEventLike<[entity: Entity]>;
 	};
 }
 
@@ -64,6 +72,8 @@ export interface ClientSystemProps<T> {
 		use_request: ClientEventLike<[entity: number, data?: defined[]]>;
 		start_continuous: ClientEventLike<[entity: number, data?: defined[]]>;
 		stop_continuous: ClientEventLike<[entity: number]>;
+		reject_session: ClientEventLike<[entity: number]>;
+		end_session: ClientEventLike<[entity: number]>;
 	};
 }
 
@@ -74,6 +84,8 @@ export interface Components {
 	action_request: Entity<defined[] | undefined>;
 	continuous_request: Entity<defined[] | undefined>;
 	processed: Tag;
+	session: Tag;
+	session_custom_id: Replecs.CustomId;
 }
 
 declare const WCSActions: {

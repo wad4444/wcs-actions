@@ -6,6 +6,9 @@ local client_system = require("@self/client-system")
 
 export type ActionType = types.ActionType
 export type ActionHandler<T> = types.ActionHandler<T>
+export type ActionTickHandler<T> = types.ActionTickHandler<T>
+export type ActionEndHandler<T> = types.ActionEndHandler<T>
+export type ActionMispredictedHandler<T> = types.ActionMispredictedHandler<T>
 export type ActionInitializer<T> = types.ActionInitializer<T>
 export type ActionReplicator<T> = types.ActionReplicator<T>
 export type ActionTable<T> = types.ActionTable<T>

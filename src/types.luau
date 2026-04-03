@@ -22,20 +22,26 @@ export type Collect = <T...>(event: RBXScriptSignal<T...>) -> (() -> (number, T.
 
 export type ActionType = "server" | "predicted" | "client" | "shared"
 
-export type ActionHandler<T> = (state: T, entity: Entity, data: { any }?) -> ()
-export type ActionInitializer<T> = (state: T, entity: Entity) -> ()
-export type ActionReplicator<T> = (state: T, entity: Entity, player: Player) -> ()
+export type ActionHandler<T> = (state: T, action: Entity, session: Entity, data: { any }?) -> ()
+export type ActionTickHandler<T> = (state: T, action: Entity, session: Entity) -> ()
+export type ActionEndHandler<T> = (state: T, action: Entity, session: Entity) -> ()
+export type ActionMispredictedHandler<T> = (state: T, action: Entity, session: Entity) -> ()
+export type ActionInitializer<T> = (state: T, action: Entity) -> ()
+export type ActionReplicator<T> = (state: T, action: Entity, player: Player) -> ()
 
 export type TableConfig<T> = {
 	action_type: ActionType,
 	check_local_state: boolean,
-	can_start: (state: T, entity: Entity) -> boolean,
+	can_start: (state: T, action: Entity) -> boolean,
 }
 
 export type EnvironmentSpecific<T> = {
 	handler: ActionHandler<T>?,
 	initialize: ActionInitializer<T>?,
 	replicate: ActionReplicator<T>?,
+	on_tick: ActionTickHandler<T>?,
+	on_end: ActionEndHandler<T>?,
+	on_mispredicted: ActionMispredictedHandler<T>?,
 }
 
 export type ActionTable<T> = {
@@ -45,22 +51,10 @@ export type ActionTable<T> = {
 	handler: ActionHandler<T>?,
 	initialize: ActionInitializer<T>?,
 	replicate: ActionReplicator<T>?,
+	on_tick: ActionTickHandler<T>?,
+	on_end: ActionEndHandler<T>?,
+	on_mispredicted: ActionMispredictedHandler<T>?,
 }
-
-export type function PartialTable(table: type)
-	local result = types.newtable()
-	for key, value in table:properties() do
-		local read = value.read
-		local write = value.write
-		if read then
-			result:setreadproperty(key, types.optional(read))
-		end
-		if write then
-			result:setwriteproperty(key, types.optional(write))
-		end
-	end
-	return result
-end
 
 export type PartialTableConfig<T> = {
 	action_type: ActionType?,
@@ -100,6 +94,8 @@ export type ServerSystemProps<T> = {
 		use_request: ServerEventLike<Entity, { any }?>,
 		start_continuous: ServerEventLike<Entity, { any }?>,
 		stop_continuous: ServerEventLike<Entity>,
+		reject_session: ServerEventLike<Entity>,
+		end_session: ServerEventLike<Entity>,
 	},
 }
 
@@ -113,6 +109,8 @@ export type ClientSystemProps<T> = {
 		use_request: ClientEventLike<number, { any }?>,
 		start_continuous: ClientEventLike<number, { any }?>,
 		stop_continuous: ClientEventLike<number>,
+		reject_session: ClientEventLike<number>,
+		end_session: ClientEventLike<number>,
 	},
 }
 
