@@ -3,7 +3,8 @@ import type Replecs from "@rbxts/replecs";
 
 export type ActionType = "server" | "predicted" | "client" | "shared";
 
-export type ActionHandler<T> = (state: T, action: Entity, session: Entity, data?: defined[]) => void;
+export type HandlerContinue = { readonly _nominal_HandlerContinue: unique symbol };
+export type ActionHandler<T> = (state: T, action: Entity, session: Entity, data?: defined[]) => HandlerContinue | void;
 export type ActionTickHandler<T> = (state: T, action: Entity, session: Entity) => void;
 export type ActionEndHandler<T> = (state: T, action: Entity, session: Entity) => void;
 export type ActionMispredictedHandler<T> = (state: T, action: Entity, session: Entity) => void;
@@ -90,6 +91,7 @@ export interface Components {
 
 declare const WCSActions: {
 	components: Components;
+	HANDLER_CONTINUE: HandlerContinue;
 	create_action_registry: <T>(custom_defaults?: Partial<TableConfig<T>>) => ActionRegistry<T>;
 	server_system: <T>(props: ServerSystemProps<T>) => () => void;
 	client_system: <T>(props: ClientSystemProps<T>) => () => void;

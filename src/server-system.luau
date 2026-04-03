@@ -216,7 +216,7 @@ local function server_system<T>(props: types.ServerSystemProps<T>)
 			end
 
 			local result = handler(state, entity, session, data)
-			if result ~= constants.HANDLER_SUCCESS then
+			if result ~= constants.HANDLER_CONTINUE then
 				if replicate then
 					replicator:stop_networked(session, true)
 				end

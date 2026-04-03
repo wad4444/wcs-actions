@@ -251,7 +251,7 @@ local function client_system<T>(props: types.ClientSystemProps<T>)
 			sessions[entity] = session
 
 			local result = handler(state, entity, session, data)
-			if result ~= constants.HANDLER_SUCCESS then
+			if result ~= constants.HANDLER_CONTINUE then
 				world:delete(session)
 				sessions[entity] = nil
 			end

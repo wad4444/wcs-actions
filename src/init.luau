@@ -24,7 +24,7 @@ local returns = {
 	create_action_registry = create_action_registry,
 	server_system = server_system,
 	client_system = client_system,
-	HANDLER_SUCCESS = constants.HANDLER_SUCCESS,
+	HANDLER_CONTINUE = constants.HANDLER_CONTINUE,
 }
 returns.default = returns
 

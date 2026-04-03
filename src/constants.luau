@@ -1,3 +1,3 @@
 return table.freeze({
-	HANDLER_SUCCESS = newproxy(false),
+	HANDLER_CONTINUE = newproxy(false),
 })
