@@ -4,7 +4,7 @@ import type Replecs from "@rbxts/replecs";
 export type ActionType = "server" | "predicted" | "client" | "shared";
 
 export type HandlerContinue = { readonly _nominal_HandlerContinue: unique symbol };
-export type ActionHandler<T> = (state: T, action: Entity, session: Entity, data?: defined[]) => HandlerContinue | void;
+export type ActionHandler<T> = (state: T, action: Entity, session: Entity) => HandlerContinue | void;
 export type ActionTickHandler<T> = (state: T, action: Entity, session: Entity) => void;
 export type ActionEndHandler<T> = (state: T, action: Entity, session: Entity) => void;
 export type ActionMispredictedHandler<T> = (state: T, action: Entity, session: Entity) => void;
@@ -86,6 +86,7 @@ export interface Components {
 	continuous_request: Entity<defined[] | undefined>;
 	processed: Tag;
 	session: Tag;
+	session_data: Entity<defined[]>;
 	session_custom_id: Replecs.CustomId;
 }
 

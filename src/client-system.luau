@@ -248,9 +248,12 @@ local function client_system<T>(props: types.ClientSystemProps<T>)
 			local session = world:entity()
 			world:add(session, ct.session)
 			world:add(session, jecs.pair(jecs.ChildOf, entity))
+			if data then
+				world:set(session, ct.session_data, data)
+			end
 			sessions[entity] = session
 
-			local result = handler(state, entity, session, data)
+			local result = handler(state, entity, session)
 			if result ~= constants.HANDLER_CONTINUE then
 				world:delete(session)
 				sessions[entity] = nil

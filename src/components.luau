@@ -16,5 +16,6 @@ return table.freeze({
 	continuous_request = jecs.component<<{ any }?>>(),
 	processed = jecs.tag(),
 	session = jecs.tag(),
+	session_data = jecs.component<<{ any }>>(),
 	session_custom_id = session_custom_id,
 })

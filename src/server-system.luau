@@ -206,6 +206,9 @@ local function server_system<T>(props: types.ServerSystemProps<T>)
 			local session = world:entity()
 			world:add(session, ct.session)
 			world:add(session, jecs.pair(jecs.ChildOf, entity))
+			if data then
+				world:set(session, ct.session_data, data)
+			end
 			sessions[entity] = session
 
 			local replicate = should_replicate_session(action_table)
@@ -215,7 +218,7 @@ local function server_system<T>(props: types.ServerSystemProps<T>)
 				replicator:set_custom(session, ct.session_custom_id)
 			end
 
-			local result = handler(state, entity, session, data)
+			local result = handler(state, entity, session)
 			if result ~= constants.HANDLER_CONTINUE then
 				if replicate then
 					replicator:stop_networked(session, true)
