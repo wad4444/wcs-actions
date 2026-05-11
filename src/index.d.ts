@@ -10,6 +10,7 @@ export type ActionEndHandler<T> = (state: T, action: Entity, session: Entity) =>
 export type ActionMispredictedHandler<T> = (state: T, action: Entity, session: Entity) => void;
 export type ActionInitializer<T> = (state: T, action: Entity) => void;
 export type ActionReplicator<T> = (state: T, action: Entity, player: Player) => void;
+export type ActionMessageHandler<T> = (state: T, action: Entity, session: Entity, data: defined[] | undefined) => void;
 
 export interface TableConfig<T> {
 	action_type: ActionType;
@@ -24,6 +25,7 @@ export interface EnvironmentSpecific<T> {
 	on_tick?: ActionTickHandler<T>;
 	on_end?: ActionEndHandler<T>;
 	on_mispredicted?: ActionMispredictedHandler<T>;
+	on_message?: ActionMessageHandler<T>;
 }
 
 export type ActionTable<T> = TableConfig<T> & EnvironmentSpecific<T>;
@@ -54,13 +56,6 @@ export interface ServerSystemProps<T> {
 	state: T;
 	registry: ActionRegistry<T>;
 	cleanup: (...args: any[]) => any;
-	remotes: {
-		use_request: ServerEventLike<[entity: Entity, data?: defined[]]>;
-		start_continuous: ServerEventLike<[entity: Entity, data?: defined[]]>;
-		stop_continuous: ServerEventLike<[entity: Entity]>;
-		reject_session: ServerEventLike<[entity: Entity]>;
-		end_session: ServerEventLike<[entity: Entity]>;
-	};
 }
 
 export interface ClientSystemProps<T> {
@@ -69,13 +64,6 @@ export interface ClientSystemProps<T> {
 	state: T;
 	registry: ActionRegistry<T>;
 	cleanup: (...args: any[]) => void;
-	remotes: {
-		use_request: ClientEventLike<[entity: number, data?: defined[]]>;
-		start_continuous: ClientEventLike<[entity: number, data?: defined[]]>;
-		stop_continuous: ClientEventLike<[entity: number]>;
-		reject_session: ClientEventLike<[entity: number]>;
-		end_session: ClientEventLike<[entity: number]>;
-	};
 }
 
 export interface Components {
@@ -87,6 +75,8 @@ export interface Components {
 	processed: Tag;
 	session: Tag;
 	session_data: Entity<defined[]>;
+	session_message: Entity<defined[]>;
+	session_message_urel: Entity<defined[]>;
 	session_custom_id: Replecs.CustomId;
 }
 

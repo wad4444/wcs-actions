@@ -3,6 +3,7 @@ local replecs = require("./dependencies/replecs")
 local collect = require("./dependencies/jecs-utils").collect :: types.Collect
 local ct = require("./components")
 local constants = require("./constants")
+local remotes = require("./remotes")
 local types = require("./types")
 
 local function is_valid_entity(world: types.World, entity: any): boolean
@@ -44,12 +45,13 @@ local function server_system<T>(props: types.ServerSystemProps<T>)
 	local state = props.state
 	local registry = props.registry
 	local replicator = props.replicator
-	local remotes = props.remotes
 	local cleanup = props.cleanup
 
 	local use_requests, cleanup_requests = collect(remotes.use_request.OnServerEvent)
 	local continuous_starts, cleanup_continuous_starts = collect(remotes.start_continuous.OnServerEvent)
 	local continuous_stops, cleanup_continuous_stops = collect(remotes.stop_continuous.OnServerEvent)
+	local messages, cleanup_messages = collect(remotes.message.OnServerEvent)
+	local messages_urel, cleanup_messages_urel = collect(remotes.message_urel.OnServerEvent)
 
 	local action_wildcard = jecs.pair(ct.action, jecs.Wildcard)
 	local processed_continuous = jecs.pair(ct.processed, ct.continuous_request)
@@ -60,23 +62,66 @@ local function server_system<T>(props: types.ServerSystemProps<T>)
 		world:query(ct.continuous_request):with(action_wildcard):without(processed_continuous):cached()
 	local stopped_continuous_query =
 		world:query(action_wildcard):with(processed_continuous):without(ct.continuous_request):cached()
+	local message_query = world:query(ct.session_message):with(ct.session):cached()
+	local message_urel_query = world:query(ct.session_message_urel):with(ct.session):cached()
 
 	local sessions: { [any]: any } = {}
 
 	replicator:register_custom_id(ct.session_custom_id)
+
+	local function dispatch_incoming_message(player: Player, entity: any, data: { any }?)
+		if not is_valid_entity(world, entity) then
+			return
+		end
+		if world:get(entity, ct.action_player) ~= player then
+			return
+		end
+
+		local session = sessions[entity]
+		if not session or not world:contains(session) or not world:has(session, ct.session) then
+			return
+		end
+
+		local action_marker = world:target(entity, ct.action)
+		if not action_marker then
+			return
+		end
+
+		local action_table = registry.get_config(action_marker :: any)
+		local on_message = action_table.on_message
+		if not on_message then
+			local action_name = world:get(action_marker :: any, jecs.Name)
+			warn(`[wcs-actions] received message for action '{action_name}' but no on_message handler is set`)
+			return
+		end
+
+		on_message(state, entity, session, data)
+	end
 
 	cleanup(function()
 		continuous_query:fini()
 		action_request_query:fini()
 		new_continuous_query:fini()
 		stopped_continuous_query:fini()
+		message_query:fini()
+		message_urel_query:fini()
 
 		cleanup_requests()
 		cleanup_continuous_starts()
 		cleanup_continuous_stops()
+		cleanup_messages()
+		cleanup_messages_urel()
 	end)
 
 	return function()
+		for _, player, entity, data in messages do
+			dispatch_incoming_message(player, entity, data)
+		end
+
+		for _, player, entity, data in messages_urel do
+			dispatch_incoming_message(player, entity, data)
+		end
+
 		for _, player, entity, data in use_requests do
 			if not is_valid_request(world, registry, player, entity) then
 				continue
@@ -264,6 +309,32 @@ local function server_system<T>(props: types.ServerSystemProps<T>)
 			end
 
 			remotes.stop_continuous:FireClient(player, entity)
+		end
+
+		for session, data in message_query do
+			world:remove(session, ct.session_message)
+			local action = world:target(session, jecs.ChildOf)
+			if not action then
+				continue
+			end
+			local player = world:get(action, ct.action_player)
+			if not player then
+				continue
+			end
+			remotes.message:FireClient(player, action, data)
+		end
+
+		for session, data in message_urel_query do
+			world:remove(session, ct.session_message_urel)
+			local action = world:target(session, jecs.ChildOf)
+			if not action then
+				continue
+			end
+			local player = world:get(action, ct.action_player)
+			if not player then
+				continue
+			end
+			remotes.message_urel:FireClient(player, action, data)
 		end
 	end
 end

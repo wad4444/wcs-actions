@@ -17,5 +17,7 @@ return table.freeze({
 	processed = jecs.tag(),
 	session = jecs.tag(),
 	session_data = jecs.component<<{ any }>>(),
+	session_message = jecs.component<<{ any }>>(),
+	session_message_urel = jecs.component<<{ any }>>(),
 	session_custom_id = session_custom_id,
 })

@@ -28,6 +28,7 @@ export type ActionEndHandler<T> = (state: T, action: Entity, session: Entity) ->
 export type ActionMispredictedHandler<T> = (state: T, action: Entity, session: Entity) -> ()
 export type ActionInitializer<T> = (state: T, action: Entity) -> ()
 export type ActionReplicator<T> = (state: T, action: Entity, player: Player) -> ()
+export type ActionMessageHandler<T> = (state: T, action: Entity, session: Entity, data: { any }?) -> ()
 
 export type TableConfig<T> = {
 	action_type: ActionType,
@@ -42,6 +43,7 @@ export type EnvironmentSpecific<T> = {
 	on_tick: ActionTickHandler<T>?,
 	on_end: ActionEndHandler<T>?,
 	on_mispredicted: ActionMispredictedHandler<T>?,
+	on_message: ActionMessageHandler<T>?,
 }
 
 export type ActionTable<T> = {
@@ -54,6 +56,7 @@ export type ActionTable<T> = {
 	on_tick: ActionTickHandler<T>?,
 	on_end: ActionEndHandler<T>?,
 	on_mispredicted: ActionMispredictedHandler<T>?,
+	on_message: ActionMessageHandler<T>?,
 }
 
 export type PartialTableConfig<T> = {
@@ -90,13 +93,6 @@ export type ServerSystemProps<T> = {
 	state: T,
 	registry: ActionRegistry<T>,
 	cleanup: (...any) -> (),
-	remotes: {
-		use_request: ServerEventLike<Entity, { any }?>,
-		start_continuous: ServerEventLike<Entity, { any }?>,
-		stop_continuous: ServerEventLike<Entity>,
-		reject_session: ServerEventLike<Entity>,
-		end_session: ServerEventLike<Entity>,
-	},
 }
 
 export type ClientSystemProps<T> = {
@@ -105,13 +101,6 @@ export type ClientSystemProps<T> = {
 	state: T,
 	registry: ActionRegistry<T>,
 	cleanup: (...any) -> (),
-	remotes: {
-		use_request: ClientEventLike<number, { any }?>,
-		start_continuous: ClientEventLike<number, { any }?>,
-		stop_continuous: ClientEventLike<number>,
-		reject_session: ClientEventLike<number>,
-		end_session: ClientEventLike<number>,
-	},
 }
 
 return {}
