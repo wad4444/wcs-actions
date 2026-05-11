@@ -15,23 +15,34 @@ else
 	folder = ReplicatedStorage:WaitForChild(FOLDER_NAME)
 end
 
-local function create<T>(name: string, class_name: T & string): RemoteEvent
+local function create_reliable(name: string): RemoteEvent
 	if is_server then
-		local remote = Instance.new(class_name)
+		local remote = Instance.new("RemoteEvent")
 		remote.Name = name
 		remote.Parent = folder
-		return remote :: RemoteEvent
+		return remote
 	else
 		return folder:WaitForChild(name) :: RemoteEvent
 	end
 end
 
+local function create_unreliable(name: string): UnreliableRemoteEvent
+	if is_server then
+		local remote = Instance.new("UnreliableRemoteEvent")
+		remote.Name = name
+		remote.Parent = folder
+		return remote
+	else
+		return folder:WaitForChild(name) :: UnreliableRemoteEvent
+	end
+end
+
 return table.freeze({
-	use_request = create("use_request", "RemoteEvent"),
-	start_continuous = create("start_continuous", "RemoteEvent"),
-	stop_continuous = create("stop_continuous", "RemoteEvent"),
-	reject_session = create("reject_session", "RemoteEvent"),
-	end_session = create("end_session", "RemoteEvent"),
-	message = create("message", "RemoteEvent"),
-	message_urel = create("message_urel", "UnreliableRemoteEvent"),
+	use_request = create_reliable("use_request"),
+	start_continuous = create_reliable("start_continuous"),
+	stop_continuous = create_reliable("stop_continuous"),
+	reject_session = create_reliable("reject_session"),
+	end_session = create_reliable("end_session"),
+	message = create_reliable("message"),
+	message_urel = create_unreliable("message_urel"),
 })
