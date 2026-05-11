@@ -7,14 +7,13 @@ export type HandlerContinue = { readonly _nominal_HandlerContinue: unique symbol
 export type ActionHandler<T> = (state: T, action: Entity, session: Entity) => HandlerContinue | void;
 export type ActionTickHandler<T> = (state: T, action: Entity, session: Entity) => void;
 export type ActionEndHandler<T> = (state: T, action: Entity, session: Entity) => void;
-export type ActionMispredictedHandler<T> = (state: T, action: Entity, session: Entity) => void;
+export type ActionRejectHandler<T> = (state: T, action: Entity, session: Entity | undefined) => void;
 export type ActionInitializer<T> = (state: T, action: Entity) => void;
 export type ActionReplicator<T> = (state: T, action: Entity, player: Player) => void;
 export type ActionMessageHandler<T> = (state: T, action: Entity, session: Entity, data: defined[] | undefined) => void;
 
 export interface TableConfig<T> {
 	action_type: ActionType;
-	check_local_state: boolean;
 	can_start: (state: T, action: Entity) => boolean;
 }
 
@@ -24,7 +23,7 @@ export interface EnvironmentSpecific<T> {
 	replicate?: ActionReplicator<T>;
 	on_tick?: ActionTickHandler<T>;
 	on_end?: ActionEndHandler<T>;
-	on_mispredicted?: ActionMispredictedHandler<T>;
+	on_reject?: ActionRejectHandler<T>;
 	on_message?: ActionMessageHandler<T>;
 }
 

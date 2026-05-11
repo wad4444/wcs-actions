@@ -37,7 +37,7 @@ local function is_valid_request(
 end
 
 local function should_replicate_session<T>(action_table: types.ActionTable<T>): boolean
-	return action_table.action_type == "predicted"
+	return action_table.action_type == "predicted" or action_table.action_type == "shared"
 end
 
 local function server_system<T>(props: types.ServerSystemProps<T>)
@@ -50,6 +50,7 @@ local function server_system<T>(props: types.ServerSystemProps<T>)
 	local use_requests, cleanup_requests = collect(remotes.use_request.OnServerEvent)
 	local continuous_starts, cleanup_continuous_starts = collect(remotes.start_continuous.OnServerEvent)
 	local continuous_stops, cleanup_continuous_stops = collect(remotes.stop_continuous.OnServerEvent)
+	local mispredictions, cleanup_mispredictions = collect(remotes.misprediction.OnServerEvent)
 	local messages, cleanup_messages = collect(remotes.message.OnServerEvent)
 	local messages_urel, cleanup_messages_urel = collect(remotes.message_urel.OnServerEvent)
 
@@ -109,6 +110,7 @@ local function server_system<T>(props: types.ServerSystemProps<T>)
 		cleanup_requests()
 		cleanup_continuous_starts()
 		cleanup_continuous_stops()
+		cleanup_mispredictions()
 		cleanup_messages()
 		cleanup_messages_urel()
 	end)
@@ -141,6 +143,30 @@ local function server_system<T>(props: types.ServerSystemProps<T>)
 				continue
 			end
 			world:remove(entity, ct.continuous_request)
+		end
+
+		for _, player, entity in mispredictions do
+			if not is_valid_entity(world, entity) then
+				continue
+			end
+			if world:get(entity, ct.action_player) ~= player then
+				continue
+			end
+			local action_marker = world:target(entity, ct.action)
+			if not action_marker then
+				continue
+			end
+			local action_table = registry.get_config(action_marker :: any)
+			if action_table.action_type ~= "predicted" then
+				continue
+			end
+			local session = sessions[entity]
+			if not session then
+				continue
+			end
+			if world:contains(session) then
+				world:delete(session)
+			end
 		end
 
 		for entity, data in continuous_query do
@@ -176,7 +202,6 @@ local function server_system<T>(props: types.ServerSystemProps<T>)
 			local action_table = if action_marker then registry.get_config(action_marker :: any) else nil
 
 			local replicate = action_table and session_alive and should_replicate_session(action_table)
-			local end_player = if replicate then world:get(action, ct.action_player) else nil
 
 			if action_table and session_alive and action_table.on_end then
 				action_table.on_end(state, action, session)
@@ -184,10 +209,6 @@ local function server_system<T>(props: types.ServerSystemProps<T>)
 
 			if replicate then
 				replicator:stop_networked(session, true)
-			end
-
-			if end_player then
-				remotes.end_session:FireClient(end_player, action)
 			end
 
 			if session_alive then
@@ -218,16 +239,15 @@ local function server_system<T>(props: types.ServerSystemProps<T>)
 				continue
 			end
 
-			local check_state = action_table.action_type ~= "client" or action_table.check_local_state
 			local is_unavailable = world:has(entity, ct.unavailable) or action_table.can_start(state, entity) == false
-			local should_reject = check_state and is_unavailable and action_table.action_type == "predicted"
+			local should_reject = is_unavailable and action_table.action_type == "predicted"
 			local reject_player = if should_reject then world:get(entity, ct.action_player) else nil
 
 			if reject_player then
-				remotes.reject_session:FireClient(reject_player, entity)
+				remotes.misprediction:FireClient(reject_player, entity)
 			end
 
-			if check_state and is_unavailable then
+			if is_unavailable then
 				continue
 			end
 

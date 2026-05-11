@@ -36,8 +36,7 @@ local function client_system<T>(props: types.ClientSystemProps<T>)
 	local use_requests, cleanup_use_requests = collect(remotes.use_request.OnClientEvent)
 	local continuous_starts, cleanup_continuous_starts = collect(remotes.start_continuous.OnClientEvent)
 	local continuous_stops, cleanup_continuous_stops = collect(remotes.stop_continuous.OnClientEvent)
-	local reject_sessions, cleanup_reject_sessions = collect(remotes.reject_session.OnClientEvent)
-	local end_sessions, cleanup_end_sessions = collect(remotes.end_session.OnClientEvent)
+	local mispredictions, cleanup_mispredictions = collect(remotes.misprediction.OnClientEvent)
 	local messages, cleanup_messages = collect(remotes.message.OnClientEvent)
 	local messages_urel, cleanup_messages_urel = collect(remotes.message_urel.OnClientEvent)
 
@@ -54,13 +53,21 @@ local function client_system<T>(props: types.ClientSystemProps<T>)
 	local message_urel_query = world:query(ct.session_message_urel):with(ct.session):cached()
 
 	local sessions: { [any]: any } = {}
+	local pending_sessions: { [any]: boolean } = {}
 
 	ct.session_custom_id:handle(function(ctx)
 		local client_action = ctx.target(jecs.ChildOf)
 		if not client_action then
 			return nil
 		end
-		return sessions[client_action]
+		local existing = sessions[client_action]
+		if existing then
+			return existing
+		end
+		local new_session = world:entity()
+		sessions[client_action] = new_session
+		pending_sessions[client_action] = true
+		return new_session
 	end)
 
 	replicator:register_custom_id(ct.session_custom_id)
@@ -68,6 +75,10 @@ local function client_system<T>(props: types.ClientSystemProps<T>)
 	local function dispatch_incoming_message(entity: any, data: { any }?)
 		local client_entity = replicator:get_client_entity(entity) :: types.Entity?
 		if not client_entity then
+			return
+		end
+
+		if pending_sessions[client_entity] then
 			return
 		end
 
@@ -103,8 +114,7 @@ local function client_system<T>(props: types.ClientSystemProps<T>)
 		cleanup_use_requests()
 		cleanup_continuous_starts()
 		cleanup_continuous_stops()
-		cleanup_reject_sessions()
-		cleanup_end_sessions()
+		cleanup_mispredictions()
 		cleanup_messages()
 		cleanup_messages_urel()
 	end)
@@ -120,28 +130,25 @@ local function client_system<T>(props: types.ClientSystemProps<T>)
 			dispatch_incoming_message(entity, data)
 		end
 
-		for _, entity in reject_sessions do
+		for _, entity in mispredictions do
 			local client_entity = replicator:get_client_entity(entity) :: types.Entity
 			if not client_entity then
 				continue
 			end
 
 			local session = sessions[client_entity]
-			if not session then
-				continue
-			end
-
-			local session_alive = world:contains(session)
+			local session_alive = session and world:contains(session)
+			local was_pending = pending_sessions[client_entity]
 			local action_marker = world:target(client_entity, ct.action)
-			local action_table = if action_marker and session_alive
+			local action_table = if action_marker
 				then registry.get_config(action_marker :: any)
 				else nil
 
-			if action_table and action_table.on_mispredicted then
-				action_table.on_mispredicted(state, client_entity, session)
+			if action_table and not was_pending and action_table.on_reject then
+				action_table.on_reject(state, client_entity, if session_alive then session else nil)
 			end
 
-			if action_table and action_table.on_end then
+			if action_table and not was_pending and session_alive and action_table.on_end then
 				action_table.on_end(state, client_entity, session)
 			end
 
@@ -149,33 +156,7 @@ local function client_system<T>(props: types.ClientSystemProps<T>)
 				world:delete(session)
 			end
 			sessions[client_entity] = nil
-		end
-
-		for _, entity in end_sessions do
-			local client_entity = replicator:get_client_entity(entity) :: types.Entity
-			if not client_entity then
-				continue
-			end
-
-			local session = sessions[client_entity]
-			if not session then
-				continue
-			end
-
-			local session_alive = world:contains(session)
-			local action_marker = world:target(client_entity, ct.action)
-			local action_table = if action_marker and session_alive
-				then registry.get_config(action_marker :: any)
-				else nil
-
-			if action_table and action_table.on_end then
-				action_table.on_end(state, client_entity, session)
-			end
-
-			if session_alive then
-				world:delete(session)
-			end
-			sessions[client_entity] = nil
+			pending_sessions[client_entity] = nil
 		end
 
 		for _, entity, data in use_requests do
@@ -233,6 +214,16 @@ local function client_system<T>(props: types.ClientSystemProps<T>)
 
 		local to_end: { any } = {}
 		for action, session in sessions do
+			if pending_sessions[action] then
+				if not world:contains(action) or not world:contains(session) then
+					if world:contains(session) then
+						world:delete(session)
+					end
+					sessions[action] = nil
+					pending_sessions[action] = nil
+				end
+				continue
+			end
 			if not world:contains(action) or not world:contains(session) or not world:has(session, ct.session) then
 				table.insert(to_end, action)
 				table.insert(to_end, session)
@@ -250,6 +241,13 @@ local function client_system<T>(props: types.ClientSystemProps<T>)
 				action_table.on_end(state, action, session)
 			end
 
+			if action_table and action_table.action_type == "predicted" and world:contains(action) then
+				local server_entity = replicator:get_server_entity(action)
+				if server_entity then
+					remotes.misprediction:FireServer(server_entity)
+				end
+			end
+
 			if session_alive then
 				world:delete(session)
 			end
@@ -257,6 +255,9 @@ local function client_system<T>(props: types.ClientSystemProps<T>)
 		end
 
 		for action, session in sessions do
+			if pending_sessions[action] then
+				continue
+			end
 			local action_marker = world:target(action, ct.action)
 			assert(action_marker, "Action marker not found")
 
@@ -275,11 +276,21 @@ local function client_system<T>(props: types.ClientSystemProps<T>)
 			local action_table = registry.get_config(action_marker)
 			local check_state = action_table.action_type == "client"
 				or action_table.action_type == "predicted"
-				or action_table.check_local_state
 
 			local is_unavailable = world:has(entity, ct.unavailable) or action_table.can_start(state, entity) == false
 
 			if check_state and is_unavailable then
+				if action_table.on_reject then
+					action_table.on_reject(state, entity, sessions[entity])
+				end
+				continue
+			end
+
+			local existing_session = sessions[entity]
+			if existing_session and not pending_sessions[entity] then
+				if action_table.on_reject then
+					action_table.on_reject(state, entity, existing_session)
+				end
 				continue
 			end
 
@@ -293,25 +304,30 @@ local function client_system<T>(props: types.ClientSystemProps<T>)
 				end
 			end
 
-			if sessions[entity] then
-				continue
-			end
-
 			local handler = action_table.handler
 			if not handler then
 				continue
 			end
 
-			local session = world:entity()
-			world:add(session, ct.session)
+			local session = existing_session or world:entity()
+			if not world:has(session, ct.session) then
+				world:add(session, ct.session)
+			end
 			world:add(session, jecs.pair(jecs.ChildOf, entity))
 			if data then
 				world:set(session, ct.session_data, data)
 			end
 			sessions[entity] = session
+			pending_sessions[entity] = nil
 
 			local result = handler(state, entity, session)
 			if result ~= constants.HANDLER_CONTINUE then
+				if action_table.action_type == "predicted" then
+					local server_entity = replicator:get_server_entity(entity)
+					if server_entity then
+						remotes.misprediction:FireServer(server_entity)
+					end
+				end
 				world:delete(session)
 				sessions[entity] = nil
 			end

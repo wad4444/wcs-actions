@@ -25,14 +25,13 @@ export type ActionType = "server" | "predicted" | "client" | "shared"
 export type ActionHandler<T> = (state: T, action: Entity, session: Entity) -> any
 export type ActionTickHandler<T> = (state: T, action: Entity, session: Entity) -> ()
 export type ActionEndHandler<T> = (state: T, action: Entity, session: Entity) -> ()
-export type ActionMispredictedHandler<T> = (state: T, action: Entity, session: Entity) -> ()
+export type ActionRejectHandler<T> = (state: T, action: Entity, session: Entity?) -> ()
 export type ActionInitializer<T> = (state: T, action: Entity) -> ()
 export type ActionReplicator<T> = (state: T, action: Entity, player: Player) -> ()
 export type ActionMessageHandler<T> = (state: T, action: Entity, session: Entity, data: { any }?) -> ()
 
 export type TableConfig<T> = {
 	action_type: ActionType,
-	check_local_state: boolean,
 	can_start: (state: T, action: Entity) -> boolean,
 }
 
@@ -42,26 +41,24 @@ export type EnvironmentSpecific<T> = {
 	replicate: ActionReplicator<T>?,
 	on_tick: ActionTickHandler<T>?,
 	on_end: ActionEndHandler<T>?,
-	on_mispredicted: ActionMispredictedHandler<T>?,
+	on_reject: ActionRejectHandler<T>?,
 	on_message: ActionMessageHandler<T>?,
 }
 
 export type ActionTable<T> = {
 	action_type: ActionType,
-	check_local_state: boolean,
 	can_start: (state: T, entity: Entity) -> boolean,
 	handler: ActionHandler<T>?,
 	initialize: ActionInitializer<T>?,
 	replicate: ActionReplicator<T>?,
 	on_tick: ActionTickHandler<T>?,
 	on_end: ActionEndHandler<T>?,
-	on_mispredicted: ActionMispredictedHandler<T>?,
+	on_reject: ActionRejectHandler<T>?,
 	on_message: ActionMessageHandler<T>?,
 }
 
 export type PartialTableConfig<T> = {
 	action_type: ActionType?,
-	check_local_state: boolean?,
 	can_start: ((state: T, entity: Entity) -> boolean)?,
 }
 

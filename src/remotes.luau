@@ -41,8 +41,7 @@ return table.freeze({
 	use_request = create_reliable("use_request"),
 	start_continuous = create_reliable("start_continuous"),
 	stop_continuous = create_reliable("stop_continuous"),
-	reject_session = create_reliable("reject_session"),
-	end_session = create_reliable("end_session"),
+	misprediction = create_reliable("misprediction"),
 	message = create_reliable("message"),
 	message_urel = create_unreliable("message_urel"),
 })

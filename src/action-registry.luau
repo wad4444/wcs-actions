@@ -8,7 +8,6 @@ end
 
 local DEFAULT_CONFIG: types.ActionTable<any> = {
 	action_type = "server",
-	check_local_state = false,
 	can_start = always_true,
 }
 
