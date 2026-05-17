@@ -37,6 +37,7 @@ local function client_system<T>(props: types.ClientSystemProps<T>)
 	local continuous_starts, cleanup_continuous_starts = collect(remotes.start_continuous.OnClientEvent)
 	local continuous_stops, cleanup_continuous_stops = collect(remotes.stop_continuous.OnClientEvent)
 	local mispredictions, cleanup_mispredictions = collect(remotes.misprediction.OnClientEvent)
+	local end_sessions, cleanup_end_sessions = collect(remotes.end_session.OnClientEvent)
 	local messages, cleanup_messages = collect(remotes.message.OnClientEvent)
 	local messages_urel, cleanup_messages_urel = collect(remotes.message_urel.OnClientEvent)
 
@@ -115,6 +116,7 @@ local function client_system<T>(props: types.ClientSystemProps<T>)
 		cleanup_continuous_starts()
 		cleanup_continuous_stops()
 		cleanup_mispredictions()
+		cleanup_end_sessions()
 		cleanup_messages()
 		cleanup_messages_urel()
 	end)
@@ -148,8 +150,31 @@ local function client_system<T>(props: types.ClientSystemProps<T>)
 				action_table.on_reject(state, client_entity, if session_alive then session else nil)
 			end
 
-			if action_table and not was_pending and session_alive and action_table.on_end then
-				action_table.on_end(state, client_entity, session)
+			if session_alive then
+				world:delete(session)
+			end
+			sessions[client_entity] = nil
+			pending_sessions[client_entity] = nil
+		end
+
+		for _, entity in end_sessions do
+			local client_entity = replicator:get_client_entity(entity) :: types.Entity
+			if not client_entity then
+				continue
+			end
+
+			local session = sessions[client_entity]
+			local session_alive = session and world:contains(session)
+			local was_pending = pending_sessions[client_entity]
+
+			if not was_pending and session_alive then
+				local action_marker = world:target(client_entity, ct.action)
+				local action_table = if action_marker
+					then registry.get_config(action_marker :: any)
+					else nil
+				if action_table and action_table.on_end then
+					action_table.on_end(state, client_entity, session)
+				end
 			end
 
 			if session_alive then
@@ -244,7 +269,7 @@ local function client_system<T>(props: types.ClientSystemProps<T>)
 			if action_table and action_table.action_type == "predicted" and world:contains(action) then
 				local server_entity = replicator:get_server_entity(action)
 				if server_entity then
-					remotes.misprediction:FireServer(server_entity)
+					remotes.end_session:FireServer(server_entity)
 				end
 			end
 
@@ -325,7 +350,7 @@ local function client_system<T>(props: types.ClientSystemProps<T>)
 				if action_table.action_type == "predicted" then
 					local server_entity = replicator:get_server_entity(entity)
 					if server_entity then
-						remotes.misprediction:FireServer(server_entity)
+						remotes.end_session:FireServer(server_entity)
 					end
 				end
 				world:delete(session)

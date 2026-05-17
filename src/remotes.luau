@@ -42,6 +42,7 @@ return table.freeze({
 	start_continuous = create_reliable("start_continuous"),
 	stop_continuous = create_reliable("stop_continuous"),
 	misprediction = create_reliable("misprediction"),
+	end_session = create_reliable("end_session"),
 	message = create_reliable("message"),
 	message_urel = create_unreliable("message_urel"),
 })

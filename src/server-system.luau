@@ -50,7 +50,7 @@ local function server_system<T>(props: types.ServerSystemProps<T>)
 	local use_requests, cleanup_requests = collect(remotes.use_request.OnServerEvent)
 	local continuous_starts, cleanup_continuous_starts = collect(remotes.start_continuous.OnServerEvent)
 	local continuous_stops, cleanup_continuous_stops = collect(remotes.stop_continuous.OnServerEvent)
-	local mispredictions, cleanup_mispredictions = collect(remotes.misprediction.OnServerEvent)
+	local end_sessions, cleanup_end_sessions = collect(remotes.end_session.OnServerEvent)
 	local messages, cleanup_messages = collect(remotes.message.OnServerEvent)
 	local messages_urel, cleanup_messages_urel = collect(remotes.message_urel.OnServerEvent)
 
@@ -110,7 +110,7 @@ local function server_system<T>(props: types.ServerSystemProps<T>)
 		cleanup_requests()
 		cleanup_continuous_starts()
 		cleanup_continuous_stops()
-		cleanup_mispredictions()
+		cleanup_end_sessions()
 		cleanup_messages()
 		cleanup_messages_urel()
 	end)
@@ -145,7 +145,7 @@ local function server_system<T>(props: types.ServerSystemProps<T>)
 			world:remove(entity, ct.continuous_request)
 		end
 
-		for _, player, entity in mispredictions do
+		for _, player, entity in end_sessions do
 			if not is_valid_entity(world, entity) then
 				continue
 			end
@@ -165,8 +165,15 @@ local function server_system<T>(props: types.ServerSystemProps<T>)
 				continue
 			end
 			if world:contains(session) then
+				if action_table.on_end then
+					action_table.on_end(state, entity, session)
+				end
+				if should_replicate_session(action_table) then
+					replicator:stop_networked(session, true)
+				end
 				world:delete(session)
 			end
+			sessions[entity] = nil
 		end
 
 		for entity, data in continuous_query do
@@ -205,6 +212,13 @@ local function server_system<T>(props: types.ServerSystemProps<T>)
 
 			if action_table and session_alive and action_table.on_end then
 				action_table.on_end(state, action, session)
+			end
+
+			if action_table and should_replicate_session(action_table) and world:contains(action) then
+				local player = world:get(action, ct.action_player)
+				if player then
+					remotes.end_session:FireClient(player, action)
+				end
 			end
 
 			if replicate then
@@ -251,14 +265,13 @@ local function server_system<T>(props: types.ServerSystemProps<T>)
 				continue
 			end
 
-			if action_table.action_type == "shared" or action_table.action_type == "client" then
+			if action_table.action_type == "client" or action_table.action_type == "shared" then
 				local player = world:get(entity, ct.action_player)
 				if not player then
 					continue
 				end
-
-				remotes.use_request:FireClient(player, entity, data)
 				if action_table.action_type == "client" then
+					remotes.use_request:FireClient(player, entity, data)
 					continue
 				end
 			end
@@ -285,11 +298,28 @@ local function server_system<T>(props: types.ServerSystemProps<T>)
 
 			local result = handler(state, entity, session)
 			if result ~= constants.HANDLER_CONTINUE then
+				if action_table.on_end then
+					action_table.on_end(state, entity, session)
+				end
 				if replicate then
 					replicator:stop_networked(session, true)
 				end
+				if should_replicate_session(action_table) then
+					local player = world:get(entity, ct.action_player)
+					if player then
+						remotes.end_session:FireClient(player, entity)
+					end
+				end
 				world:delete(session)
 				sessions[entity] = nil
+				continue
+			end
+
+			if action_table.action_type == "shared" then
+				local player = world:get(entity, ct.action_player)
+				if player then
+					remotes.use_request:FireClient(player, entity, data)
+				end
 			end
 		end
 
